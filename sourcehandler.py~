@@ -1,0 +1,4 @@
+import sys
+
+if sys.argv.length != 1:
+    print "Please provide a filename"

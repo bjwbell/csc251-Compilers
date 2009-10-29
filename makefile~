@@ -1,0 +1,6 @@
+default:
+	rm newl.hs
+	rm scanner.hs
+	alex scanner.x
+	happy newl.y
+	ghc newl.hs scanner.hs
