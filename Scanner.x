@@ -30,6 +30,8 @@ tokens :-
   "while"				{ \s -> TWhile }
   $digit+				{ \s -> TIntLiteral (read s) }
   "."                                   { \s -> TPeriod }
+  "&&"					{ \s -> TOp (head s) }
+  "!"					{ \s -> TNot }
   [\+\-\*\/]                            { \s -> TOp (head s) }
   "="					{ \s -> TEquals }
   ";" 					{ \s -> TSemiColon }
@@ -68,10 +70,11 @@ data Token =
 	TLength		|
 	TWhile		|
 	TNew		|
-	TOp Char         |
-	TEquals          |
-	TPeriod          |
-	TSemiColon       |
+	TOp Char        |
+        TNot            |
+	TEquals         |
+	TPeriod         |
+	TSemiColon      |
 	TLeftParen 	|
 	TRightParen 	|
 	TIdent String	|

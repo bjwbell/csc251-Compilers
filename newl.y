@@ -10,40 +10,64 @@ import Scanner
 
 %token
   "class"				{ TClass }
---  "new"					{ TNew }
+  "new"					{ TNew }
   "String"				{ TString }
   "static"				{ TStatic }
   "void"				{ TVoid }
   "main"				{ TMain }
   "public"				{ TPublic }
 --  "extends"				{ TExtend }
---  "int"					{ TInt }
+"int"				        { TInt }
 --  "bool"				{ TBool }
---  "if"					{ TIf }
+--  "if"				{ TIf }
 --  "else"				{ TElse }
---  "true"				{ TTrue }
---  "false"				{ TFalse }
---  "this"				{ TThis }
---  "length"				{ TLength }
+  "true"				{ TTrue }
+  "false"				{ TFalse }
+  "this"				{ TThis }
+  "length"				{ TLength }
 --  "while"				{ TWhile }
---  integer_literal			{ TIntLiteral $$ }
+  integer_literal			{ TIntLiteral $$ }
   ident		                        { TIdent $$ }
   "{"	 	 	   		{ TLeftBrace }
   "}"					{ TRightBrace }
---  ","					{ TComma }
+  ","					{ TComma }
   "["					{ TLeftBrack }
   "]"					{ TRightBrack }
---  op                                    { TOp $$}
+  op                                    { TOp $$}
   "("                                   { TLeftParen }
   ")"                                   { TRightParen }
---  ";"                                   { TSemiColon }
---  "."                                   { TPeriod }
+  ";"                                   { TSemiColon }
+  "."                                   { TPeriod }
+  "!"                                   { TNot }
 --  "="                                   { TEquals }
 
 %%
 
 Program : MainClass { $1 }
-MainClass : "class" ident "{" "public" "static" "void" "main" "(" "String" "[" "]" ident ")" "{" "}" "}" { MClass $2 $12 }
+MainClass : "class" ident "{" "public" "static" "void" "main" "(" "String" "[" "]" ident ")" "{" Exp ";" "}" "}" { MClass $2 $12 $15 }
+
+Exp : 
+    Exp op Exp                        { Ex "e1"}
+    | Exp "[" Exp "]"                 { Ex "e2"}
+    | Exp "." "length"                { Ex "e3"}
+    | Exp "." ident "(" ExpList ")"   { Ex "e4"}
+    | integer_literal                 { Ex "e5"}
+    | "true"                          { Ex "e6"}
+    | "false"                         { Ex "e7"}
+    | ident                           { Ex "e8"}
+    | "this"                          { Ex "e9"}
+    | "new" "int" "[" Exp "]"         { Ex "e10"}  
+    | "new" ident "(" ")"             { Ex "e11"}
+    | "!" Exp                         { Ex "e12"}
+    | "(" Exp ")"                     { Ex "e13"}
+
+ExpList :
+        Exp            { ExL "ExpList1" }
+        | Exp ExpRest  { ExL "ExpList2" }
+        |              { ExL "Emtpty ExpList" }
+    
+ExpRest : "," Exp      { ExR "ExpRest" }
+
 
 --Exp : let var '=' Exp in Exp { Let $2 $4 $6 }
 --    | Exp1    	      	     { Exp1 $1 }
@@ -71,9 +95,18 @@ data Program
       deriving Show
 
 data MainClass
-    = MClass String String
+    = MClass String String Exp
       deriving Show
+data Exp
+    = Ex String
+    deriving Show
 
+data ExpList
+    = ExL String
+    deriving Show
+data ExpRest
+    = ExR String
+    deriving Show
 --data Ident = Var String
 
 --data Exp  
