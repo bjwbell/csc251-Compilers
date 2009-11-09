@@ -33,6 +33,7 @@ tokens :-
   "&&"					{ \s -> TOp (head s) }
   "!"					{ \s -> TNot }
   [\+\-\*\/]                            { \s -> TOp (head s) }
+  "<"                                   { \s -> TComOp (head s) }
   "="					{ \s -> TEquals }
   ";" 					{ \s -> TSemiColon }
   "("					{ \s -> TLeftParen }
@@ -71,6 +72,7 @@ data Token =
 	TWhile		|
 	TNew		|
 	TOp Char        |
+	TComOp Char     |
         TNot            |
 	TEquals         |
 	TPeriod         |

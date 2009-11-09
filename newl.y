@@ -34,6 +34,7 @@ import Scanner
   "["					{ TLeftBrack }
   "]"					{ TRightBrack }
   op                                    { TOp $$}
+  comop                                 { TComOp $$ }
   "("                                   { TLeftParen }
   ")"                                   { TRightParen }
   ";"                                   { TSemiColon }
@@ -47,18 +48,19 @@ Program : MainClass { $1 }
 MainClass : "class" ident "{" "public" "static" "void" "main" "(" "String" "[" "]" ident ")" "{" Exp ";" "}" "}" { MClass $2 $12 $15 }
 
 Exp : 
-    Exp op Exp                        { Exp "e1"}
-    | Exp "[" Exp "]"                 { Exp "e2"}
-    | Exp "." "length"                { Exp "e3"}
-    | Exp "." ident "(" ExpList ")"   { Exp "e4"}
-    | integer_literal                 { Exp "e5"}
+    Exp op Exp                        { ExpOp $1 $2 $3}
+    | Exp comop Exp                   { ExpComOp $1 $2 $3}
+    | Exp "[" Exp "]"                 { ExpArray $1 $3}
+    | Exp "." "length"                { ExpLength $1}
+    | Exp "." ident "(" ExpList ")"   { ExpFCall $1 $3 $5}
+    | integer_literal                 { ExpInt $1}
     | "true"                          { ExpBool True}
     | "false"                         { ExpBool False}
     | ident                           { ExpIdent $1}
     | "this"                          { ExpThis }
-    | "new" "int" "[" Exp "]"         { ExpOp NewInt $4 }  
+    | "new" "int" "[" Exp "]"         { ExpNewInt $4 }  
     | "new" ident "(" ")"             { ExpNewIdent $2}
-    | "!" Exp                         { ExpOp Not $2}
+    | "!" Exp                         { ExpNot $2}
     | "(" Exp ")"                     { ExpExp $2}
 
 ExpList :
@@ -97,18 +99,22 @@ data Program
 data MainClass
     = MClass String String Exp
       deriving Show
+
 data Exp
     = Exp String
-    | ExpComOp Exp Op Exp
+    | ExpOp Exp Char Exp
+    | ExpComOp Exp Char Exp
     | ExpArray Exp Exp -- "Exp [ Exp ]"
-    | ExpOp Operation Exp  -- different opterations such as Exp . length, !Exp, "new" "int" "[" Exp "]" etc
     | ExpFCall Exp Ident ExpList -- Exp . Ident ( ExpList )
-    | ExpInt Integer_Literal
+    | ExpInt Int
+    | ExpNewInt Exp
     | ExpBool Bool -- True or False
     | ExpIdent Ident
-    | ExpNewIdent Ident Operation -- new Ident ()
+    | ExpNewIdent Ident -- new Ident ()
     | ExpExp Exp -- Exp ( Exp )
     | ExpThis
+    | ExpNot Exp
+    | ExpLength Exp
     deriving Show
 data Op
      = And
@@ -117,12 +123,7 @@ data Op
      | Minus
      | Times
      deriving (Show, Eq)
-data Operation 
-     = Not
-     | Length
-     | NewInt
-     | NewIdent
-     deriving (Show, Eq)
+
 type Ident = String
 type Integer_Literal = Int
 data ExpList
