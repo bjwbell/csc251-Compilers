@@ -47,26 +47,26 @@ Program : MainClass { $1 }
 MainClass : "class" ident "{" "public" "static" "void" "main" "(" "String" "[" "]" ident ")" "{" Exp ";" "}" "}" { MClass $2 $12 $15 }
 
 Exp : 
-    Exp op Exp                        { Ex "e1"}
-    | Exp "[" Exp "]"                 { Ex "e2"}
-    | Exp "." "length"                { Ex "e3"}
-    | Exp "." ident "(" ExpList ")"   { Ex "e4"}
-    | integer_literal                 { Ex "e5"}
-    | "true"                          { Ex "e6"}
-    | "false"                         { Ex "e7"}
-    | ident                           { Ex "e8"}
-    | "this"                          { Ex "e9"}
-    | "new" "int" "[" Exp "]"         { Ex "e10"}  
-    | "new" ident "(" ")"             { Ex "e11"}
-    | "!" Exp                         { Ex "e12"}
-    | "(" Exp ")"                     { Ex "e13"}
+    Exp op Exp                        { Exp "e1"}
+    | Exp "[" Exp "]"                 { Exp "e2"}
+    | Exp "." "length"                { Exp "e3"}
+    | Exp "." ident "(" ExpList ")"   { Exp "e4"}
+    | integer_literal                 { Exp "e5"}
+    | "true"                          { ExpBool True}
+    | "false"                         { ExpBool False}
+    | ident                           { ExpIdent $1}
+    | "this"                          { ExpThis }
+    | "new" "int" "[" Exp "]"         { ExpOp NewInt $4 }  
+    | "new" ident "(" ")"             { ExpNewIdent $2}
+    | "!" Exp                         { ExpOp Not $2}
+    | "(" Exp ")"                     { ExpExp $2}
 
 ExpList :
-        Exp            { ExL "ExpList1" }
-        | Exp ExpRest  { ExL "ExpList2" }
-        |              { ExL "Emtpty ExpList" }
+        Exp            { ExpListExp $1 }
+        | Exp ExpRest  { ExpList $1 $2 }
+        |              { ExpListEmpty }
     
-ExpRest : "," Exp      { ExR "ExpRest" }
+ExpRest : "," Exp      { ExpRest $2 }
 
 
 --Exp : let var '=' Exp in Exp { Let $2 $4 $6 }
@@ -98,14 +98,40 @@ data MainClass
     = MClass String String Exp
       deriving Show
 data Exp
-    = Ex String
+    = Exp String
+    | ExpComOp Exp Op Exp
+    | ExpArray Exp Exp -- "Exp [ Exp ]"
+    | ExpOp Operation Exp  -- different opterations such as Exp . length, !Exp, "new" "int" "[" Exp "]" etc
+    | ExpFCall Exp Ident ExpList -- Exp . Ident ( ExpList )
+    | ExpInt Integer_Literal
+    | ExpBool Bool -- True or False
+    | ExpIdent Ident
+    | ExpNewIdent Ident Operation -- new Ident ()
+    | ExpExp Exp -- Exp ( Exp )
+    | ExpThis
     deriving Show
-
+data Op
+     = And
+     | LessThan
+     | Plus
+     | Minus
+     | Times
+     deriving (Show, Eq)
+data Operation 
+     = Not
+     | Length
+     | NewInt
+     | NewIdent
+     deriving (Show, Eq)
+type Ident = String
+type Integer_Literal = Int
 data ExpList
-    = ExL String
+    = ExpList Exp ExpRest
+    | ExpListEmpty
+    | ExpListExp Exp
     deriving Show
 data ExpRest
-    = ExR String
+    = ExpRest Exp
     deriving Show
 --data Ident = Var String
 

@@ -291,7 +291,7 @@ happyReduction_3 _
 	_
 	_
 	 =  HappyAbsSyn6
-		 (Ex "e1"
+		 (Exp "e1"
 	)
 
 happyReduce_4 = happyReduce 4 6 happyReduction_4
@@ -301,7 +301,7 @@ happyReduction_4 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn6
-		 (Ex "e2"
+		 (Exp "e2"
 	) `HappyStk` happyRest
 
 happyReduce_5 = happySpecReduce_3  6 happyReduction_5
@@ -309,7 +309,7 @@ happyReduction_5 _
 	_
 	_
 	 =  HappyAbsSyn6
-		 (Ex "e3"
+		 (Exp "e3"
 	)
 
 happyReduce_6 = happyReduce 6 6 happyReduction_6
@@ -321,99 +321,105 @@ happyReduction_6 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn6
-		 (Ex "e4"
+		 (Exp "e4"
 	) `HappyStk` happyRest
 
 happyReduce_7 = happySpecReduce_1  6 happyReduction_7
 happyReduction_7 _
 	 =  HappyAbsSyn6
-		 (Ex "e5"
+		 (Exp "e5"
 	)
 
 happyReduce_8 = happySpecReduce_1  6 happyReduction_8
 happyReduction_8 _
 	 =  HappyAbsSyn6
-		 (Ex "e6"
+		 (ExpBool True
 	)
 
 happyReduce_9 = happySpecReduce_1  6 happyReduction_9
 happyReduction_9 _
 	 =  HappyAbsSyn6
-		 (Ex "e7"
+		 (ExpBool False
 	)
 
 happyReduce_10 = happySpecReduce_1  6 happyReduction_10
-happyReduction_10 _
+happyReduction_10 (HappyTerminal (TIdent happy_var_1))
 	 =  HappyAbsSyn6
-		 (Ex "e8"
+		 (ExpIdent happy_var_1
 	)
+happyReduction_10 _  = notHappyAtAll 
 
 happyReduce_11 = happySpecReduce_1  6 happyReduction_11
 happyReduction_11 _
 	 =  HappyAbsSyn6
-		 (Ex "e9"
+		 (ExpThis
 	)
 
 happyReduce_12 = happyReduce 5 6 happyReduction_12
 happyReduction_12 (_ `HappyStk`
-	_ `HappyStk`
+	(HappyAbsSyn6  happy_var_4) `HappyStk`
 	_ `HappyStk`
 	_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn6
-		 (Ex "e10"
+		 (ExpOp NewInt happy_var_4
 	) `HappyStk` happyRest
 
 happyReduce_13 = happyReduce 4 6 happyReduction_13
 happyReduction_13 (_ `HappyStk`
 	_ `HappyStk`
-	_ `HappyStk`
+	(HappyTerminal (TIdent happy_var_2)) `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn6
-		 (Ex "e11"
+		 (ExpNewIdent happy_var_2
 	) `HappyStk` happyRest
 
 happyReduce_14 = happySpecReduce_2  6 happyReduction_14
-happyReduction_14 _
+happyReduction_14 (HappyAbsSyn6  happy_var_2)
 	_
 	 =  HappyAbsSyn6
-		 (Ex "e12"
+		 (ExpOp Not happy_var_2
 	)
+happyReduction_14 _ _  = notHappyAtAll 
 
 happyReduce_15 = happySpecReduce_3  6 happyReduction_15
 happyReduction_15 _
-	_
+	(HappyAbsSyn6  happy_var_2)
 	_
 	 =  HappyAbsSyn6
-		 (Ex "e13"
+		 (ExpExp happy_var_2
 	)
+happyReduction_15 _ _ _  = notHappyAtAll 
 
 happyReduce_16 = happySpecReduce_1  7 happyReduction_16
-happyReduction_16 _
+happyReduction_16 (HappyAbsSyn6  happy_var_1)
 	 =  HappyAbsSyn7
-		 (ExL "ExpList1"
+		 (ExpListExp happy_var_1
 	)
+happyReduction_16 _  = notHappyAtAll 
 
 happyReduce_17 = happySpecReduce_2  7 happyReduction_17
-happyReduction_17 _
-	_
+happyReduction_17 (HappyAbsSyn8  happy_var_2)
+	(HappyAbsSyn6  happy_var_1)
 	 =  HappyAbsSyn7
-		 (ExL "ExpList2"
+		 (ExpList happy_var_1 happy_var_2
 	)
+happyReduction_17 _ _  = notHappyAtAll 
 
 happyReduce_18 = happySpecReduce_0  7 happyReduction_18
 happyReduction_18  =  HappyAbsSyn7
-		 (ExL "Emtpty ExpList"
+		 (ExpListEmpty
 	)
 
 happyReduce_19 = happySpecReduce_2  8 happyReduction_19
-happyReduction_19 _
+happyReduction_19 (HappyAbsSyn6  happy_var_2)
 	_
 	 =  HappyAbsSyn8
-		 (ExR "ExpRest"
+		 (ExpRest happy_var_2
 	)
+happyReduction_19 _ _  = notHappyAtAll 
 
 happyNewToken action sts stk [] =
 	action 34 34 notHappyAtAll (HappyState action) sts stk []
@@ -486,14 +492,40 @@ data MainClass
     = MClass String String Exp
       deriving Show
 data Exp
-    = Ex String
+    = Exp String
+    | ExpComOp Exp Op Exp
+    | ExpArray Exp Exp -- "Exp [ Exp ]"
+    | ExpOp Operation Exp  -- different opterations such as Exp . length, !Exp, "new" "int" "[" Exp "]" etc
+    | ExpFCall Exp Ident ExpList -- Exp . Ident ( ExpList )
+    | ExpInt Integer_Literal
+    | ExpBool Bool -- True or False
+    | ExpIdent Ident
+    | ExpNewIdent Ident Operation -- new Ident ()
+    | ExpExp Exp -- Exp ( Exp )
+    | ExpThis
     deriving Show
-
+data Op
+     = And
+     | LessThan
+     | Plus
+     | Minus
+     | Times
+     deriving (Show, Eq)
+data Operation 
+     = Not
+     | Length
+     | NewInt
+     | NewIdent
+     deriving (Show, Eq)
+type Ident = String
+type Integer_Literal = Int
 data ExpList
-    = ExL String
+    = ExpList Exp ExpRest
+    | ExpListEmpty
+    | ExpListExp Exp
     deriving Show
 data ExpRest
-    = ExR String
+    = ExpRest Exp
     deriving Show
 --data Ident = Var String
 
