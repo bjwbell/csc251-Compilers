@@ -1,12 +1,35 @@
 {
 module Main where
 import Scanner
+
+data E a = Ok a | Failed String
+
+thenE :: E a -> (a -> E b) -> E b
+m thenE k = 
+   case m of 
+       Ok a -> k a
+       Failed e -> Failed e
+
+returnE :: a -> E a
+returnE a = Ok a
+
+failE :: String -> E a
+failE err = Failed err
+
+catchE :: E a -> (String -> E a) -> E a
+catchE m k = 
+   case m of
+      Ok a -> OK a
+      Failed e -> k e
+
+
 }
 
 
 %name newl
 %tokentype { Token }
 %error { parseError }
+%monad { E } { thenE } { returnE }
 
 %token
   "class"				{ TClass }
@@ -16,16 +39,17 @@ import Scanner
   "void"				{ TVoid }
   "main"				{ TMain }
   "public"				{ TPublic }
---  "extends"				{ TExtend }
-"int"				        { TInt }
---  "bool"				{ TBool }
---  "if"				{ TIf }
---  "else"				{ TElse }
+  "return"                              { TReturn }
+  "extends"				{ TExtend }
+  "int"				        { TInt }
+  "boolean"				{ TBool }
+  "if"				        { TIf }
+  "else"				{ TElse }
   "true"				{ TTrue }
   "false"				{ TFalse }
   "this"				{ TThis }
   "length"				{ TLength }
---  "while"				{ TWhile }
+  "while"				{ TWhile }
   integer_literal			{ TIntLiteral $$ }
   ident		                        { TIdent $$ }
   "{"	 	 	   		{ TLeftBrace }
@@ -40,12 +64,60 @@ import Scanner
   ";"                                   { TSemiColon }
   "."                                   { TPeriod }
   "!"                                   { TNot }
---  "="                                   { TEquals }
-
+  "="                                   { TEquals }
+  "System.out.println"                  { TPrint }
 %%
 
-Program : MainClass { $1 }
-MainClass : "class" ident "{" "public" "static" "void" "main" "(" "String" "[" "]" ident ")" "{" Exp ";" "}" "}" { MClass $2 $12 $15 }
+Program : 
+        MainClass ClassDeclList { Program $1 $2 }
+MainClass : "class" ident "{" "public" "static" "void" "main" "(" "String" "[" "]" ident ")" "{" Statement "}" "}" { MClass $2 $12 $15 }
+
+ClassDeclList :
+          ClassDecl     { ClassDeclList $1 CEmpty }
+          | ClassDecl ClassDeclList { ClassDeclList $1 $2 }
+          |             { CEmpty }
+
+ClassDecl : 
+          "class" ident "{" VarDeclList MethodDeclList "}"                     { ClassDecl $2 "void" $4 $5 }
+          | "class" ident "extends" ident "{" VarDeclList MethodDeclList "}"   { ClassDecl $2 $4 $6 $7 }
+
+
+
+MethodDeclList :
+     MethodDecl                   { MethodDeclList $1 MEmpty }
+     | MethodDecl MethodDeclList  { MethodDeclList $1 $2 }
+     |                            { MEmpty }
+
+
+MethodDecl : "public" Type ident "(" FormalList ")" "{" VarDeclList StatementList "return" Exp ";" "}" { MethodDecl $2 $3 $5 $8 $9 $11 }
+
+VarDeclList :
+     Type ident ";" { VarDeclList $1 $2 VEmpty }
+     | Type ident ";" VarDeclList { VarDeclList $1 $2 $4 }
+     |              { VEmpty }
+
+FormalList :
+     Type ident       { FormalList $1 $2 FEmpty }
+     | Type ident FormalList { FormalList $1 $2 $3 }
+
+Type :
+     "int" "[" "]"    { TypeIntArray }
+     | "boolean"      { TypeBoolean }
+     | "int"          { TypeInt }
+     | ident          { TypeIdent $1 }
+
+Statement :
+    "{" StatementList "}"                            { SList $2 }
+    | "if" "(" Exp ")" Statement "else" Statement  { SIfElse $3 $5 $7 }
+    | "while" "(" Exp ")" Statement                { SWhile $3 $5 }
+    | "System.out.println" "(" Exp ")" ";"         { SPrint $3 }
+    | ident "=" Exp ";"                              { SEqual $1 $3 }
+    | ident "[" Exp "]" "=" Exp ";"                  { SArrayEqual $1 $3 $6 }
+
+StatementList :
+    Statement               { StatementList Empty $1 }
+    | StatementList Statement   { StatementList $1 $2 }
+
 
 Exp : 
     Exp op Exp                        { ExpOp $1 $2 $3}
@@ -71,34 +143,68 @@ ExpList :
 ExpRest : "," Exp      { ExpRest $2 }
 
 
---Exp : let var '=' Exp in Exp { Let $2 $4 $6 }
---    | Exp1    	      	     { Exp1 $1 }
-
---Exp1 : Exp1 '+' Term 	     { Plus $1 $3}
---     | Exp1 '-' Term 	     { Minus $1 $3 }
---     | Term 		     { Term $1 }
-
---Term : Term '*' Factor 	     { Times $1 $3 }
---     | Term '/' Factor 	     { Div $1 $3 }
---     | Factor		     { Factor $1 }
-
---Factor 
---      : int		     { Int $1 }
---      | var		     { Var $1 }
---      | '(' Exp ')'	     { Brack $2 }
-
-
 {
+
 parseError :: [Token] -> a
-parseError _ = error "Parse error"
+parseError tokens = failE "Parse error"
 
 data Program 
-    = MainClass 
+    = Program MainClass ClassDeclList
       deriving Show
 
 data MainClass
-    = MClass String String Exp
+    = MClass String String Statement
       deriving Show
+
+data ClassDeclList
+    = ClassDeclList ClassDecl ClassDeclList
+    | CEmpty
+  deriving Show
+
+data ClassDecl = ClassDecl Ident Ident VarDeclList MethodDeclList
+  deriving Show
+
+
+data MethodDeclList
+    = MethodDeclList MethodDecl MethodDeclList
+    | MEmpty
+    deriving Show
+data MethodDecl
+    = MethodDecl Type Ident FormalList VarDeclList StatementList Exp
+    deriving Show
+
+data VarDeclList =
+    VarDeclList Type Ident VarDeclList
+    | VEmpty
+    deriving Show
+
+data FormalList = 
+    FormalList Type Ident FormalList
+    | FEmpty
+  deriving Show
+
+data Type =
+    TypeIntArray
+    | TypeBoolean
+    | TypeInt
+    | TypeIdent Ident
+    deriving Show
+
+data Statement
+    = Statement String
+    | SList StatementList
+    | SIfElse Exp Statement Statement
+    | SWhile Exp Statement
+    | SPrint Exp
+    | SEqual Ident Exp
+    | SArrayEqual Ident Exp Exp
+    deriving Show
+
+data StatementList
+    = StatementList StatementList Statement 
+    | Empty
+    deriving Show
+
 
 data Exp
     = Exp String
@@ -134,30 +240,6 @@ data ExpList
 data ExpRest
     = ExpRest Exp
     deriving Show
---data Ident = Var String
-
---data Exp  
---      = Let String Exp Exp
---      | Exp1 Exp1
---      deriving Show
-
---data Exp1 
---      = Plus Exp1 Term 
---      | Minus Exp1 Term 
---      | Term Term
---      deriving Show
-
---data Term 
---      = Times Term Factor 
---      | Div Term Factor 
---      | Factor Factor
---      deriving Show
-
---data Factor 
---      = Int Int 
---      | Var String 
---      | Brack Exp
---      deriving Show
 
 
 main = getContents >>= print . newl . alexScanTokens

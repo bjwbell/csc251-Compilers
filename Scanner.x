@@ -17,10 +17,11 @@ tokens :-
   "static"				{ \s -> TStatic }
   "void"				{ \s -> TVoid }
   "main"				{ \s -> TMain }
+  "return"                              { \s -> TReturn }
   "public"				{ \s -> TPublic }
   "extends"				{ \s -> TExtend }
   "int"					{ \s -> TInt }
-  "bool"				{ \s -> TBool }
+  "boolean"				{ \s -> TBool }
   "if"					{ \s -> TIf }
   "else"				{ \s -> TElse }
   "true"				{ \s -> TTrue }
@@ -44,6 +45,7 @@ tokens :-
   ","					{ \s -> TComma }
   "["					{ \s -> TLeftBrack }
   "]"					{ \s -> TRightBrack }
+  "System.out.println"                  { \s -> TPrint }
 {
 -- Each action has type :: String -> Token
 
@@ -80,7 +82,9 @@ data Token =
 	TLeftParen 	|
 	TRightParen 	|
 	TIdent String	|
-	TIntLiteral Int
+        TPrint          |
+	TIntLiteral Int |
+        TReturn
 	deriving (Eq,Show)
 
 --main = do
