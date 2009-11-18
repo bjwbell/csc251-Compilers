@@ -1,28 +1,6 @@
 {
 module Main where
 import Scanner
-
-data E a = Ok a | Failed String
-
-thenE :: E a -> (a -> E b) -> E b
-m thenE k = 
-   case m of 
-       Ok a -> k a
-       Failed e -> Failed e
-
-returnE :: a -> E a
-returnE a = Ok a
-
-failE :: String -> E a
-failE err = Failed err
-
-catchE :: E a -> (String -> E a) -> E a
-catchE m k = 
-   case m of
-      Ok a -> OK a
-      Failed e -> k e
-
-
 }
 
 
@@ -30,7 +8,6 @@ catchE m k =
 %tokentype { Token }
 %error { parseError }
 %monad { E } { thenE } { returnE }
-
 %token
   "class"				{ TClass }
   "new"					{ TNew }
@@ -70,41 +47,50 @@ catchE m k =
 
 Program : 
         MainClass ClassDeclList { Program $1 $2 }
-MainClass : "class" ident "{" "public" "static" "void" "main" "(" "String" "[" "]" ident ")" "{" Statement "}" "}" { MClass $2 $12 $15 }
+MainClass : 
+          "class" ident "{" "public" "static" "void" "main" "(" "String" "[" "]" ident ")" "{" Statement "}" "}" { MClass $2 $12 $15 }
+--          | error {% failE ("Error parsing MainClass")}
+
 
 ClassDeclList :
           ClassDecl     { ClassDeclList $1 CEmpty }
           | ClassDecl ClassDeclList { ClassDeclList $1 $2 }
           |             { CEmpty }
+--          | error {% failE "Error parsing Classes"}
 
 ClassDecl : 
           "class" ident "{" VarDeclList MethodDeclList "}"                     { ClassDecl $2 "void" $4 $5 }
           | "class" ident "extends" ident "{" VarDeclList MethodDeclList "}"   { ClassDecl $2 $4 $6 $7 }
-
+--          | error {% failE "Error parsing ClassDecl"}
 
 
 MethodDeclList :
      MethodDecl                   { MethodDeclList $1 MEmpty }
      | MethodDecl MethodDeclList  { MethodDeclList $1 $2 }
      |                            { MEmpty }
+--     | error {% failE "Error parsing MethodDeclList"}
 
-
-MethodDecl : "public" Type ident "(" FormalList ")" "{" VarDeclList StatementList "return" Exp ";" "}" { MethodDecl $2 $3 $5 $8 $9 $11 }
+MethodDecl : 
+     "public" Type ident "(" FormalList ")" "{" VarDeclList StatementList "return" Exp ";" "}" { MethodDecl $2 $3 $5 $8 $9 $11 }
+--     | error {% failE "Error parsing MethodDecl"}
 
 VarDeclList :
      Type ident ";" { VarDeclList $1 $2 VEmpty }
      | Type ident ";" VarDeclList { VarDeclList $1 $2 $4 }
      |              { VEmpty }
+--     | error {% failE "Error parsing VarDeclList"}
 
 FormalList :
      Type ident       { FormalList $1 $2 FEmpty }
      | Type ident FormalList { FormalList $1 $2 $3 }
+--     | error {% failE "Error parsing FormalList"}
 
 Type :
      "int" "[" "]"    { TypeIntArray }
      | "boolean"      { TypeBoolean }
      | "int"          { TypeInt }
      | ident          { TypeIdent $1 }
+--     | error {% failE "Error parsing Type"}
 
 Statement :
     "{" StatementList "}"                            { SList $2 }
@@ -113,11 +99,12 @@ Statement :
     | "System.out.println" "(" Exp ")" ";"         { SPrint $3 }
     | ident "=" Exp ";"                              { SEqual $1 $3 }
     | ident "[" Exp "]" "=" Exp ";"                  { SArrayEqual $1 $3 $6 }
+--    | error                                         {% failE "Error parsing statement" }
 
 StatementList :
     Statement               { StatementList Empty $1 }
     | StatementList Statement   { StatementList $1 $2 }
-
+--    | error {% failE "Error parsing StatementList"}
 
 Exp : 
     Exp op Exp                        { ExpOp $1 $2 $3}
@@ -134,19 +121,44 @@ Exp :
     | "new" ident "(" ")"             { ExpNewIdent $2}
     | "!" Exp                         { ExpNot $2}
     | "(" Exp ")"                     { ExpExp $2}
+--    | error                           {% failE "Error parsing expression" }
 
 ExpList :
         Exp            { ExpListExp $1 }
         | Exp ExpRest  { ExpList $1 $2 }
         |              { ExpListEmpty }
-    
-ExpRest : "," Exp      { ExpRest $2 }
+--        | error {% failE "Error parsing Expression List"}
 
+ExpRest : 
+     "," Exp      { ExpRest $2 }
+--     | error {% failE "Error parsing Expression List"}
 
 {
 
-parseError :: [Token] -> a
-parseError tokens = failE "Parse error"
+data E a = ParseOk a 
+  | ParseFailed String
+  deriving Show
+
+thenE :: E a -> (a -> E b) -> E b
+m `thenE` k = 
+   case m of 
+       ParseOk a -> k a
+       ParseFailed e -> ParseFailed e
+
+returnE :: a -> E a
+returnE a = ParseOk a
+
+failE :: String -> E a
+failE err = ParseFailed err
+
+catchE :: E a -> (String -> E a) -> E a
+catchE m k = 
+   case m of
+      ParseOk a -> ParseOk a
+      ParseFailed e -> k e
+
+parseError :: [Token] -> E a
+parseError tokens = failE ("Parse error on token "  ++ (show (head tokens)))
 
 data Program 
     = Program MainClass ClassDeclList
@@ -198,6 +210,7 @@ data Statement
     | SPrint Exp
     | SEqual Ident Exp
     | SArrayEqual Ident Exp Exp
+    | StatementError
     deriving Show
 
 data StatementList
@@ -221,6 +234,7 @@ data Exp
     | ExpThis
     | ExpNot Exp
     | ExpLength Exp
+    | ExpError
     deriving Show
 data Op
      = And

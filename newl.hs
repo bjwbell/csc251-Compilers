@@ -1,26 +1,6 @@
 module Main where
 import Scanner
 
-data E a = Ok a | Failed String
-
-thenE :: E a -> (a -> E b) -> E b
-m thenE k = 
-   case m of 
-       Ok a -> k a
-       Failed e -> Failed e
-
-returnE :: a -> E a
-returnE a = Ok a
-
-failE :: String -> E a
-failE err = Failed err
-
-catchE :: E a -> (String -> E a) -> E a
-catchE m k = 
-   case m of
-      Ok a -> OK a
-      Failed e -> k e
-
 -- parser produced by Happy Version 1.17
 
 data HappyAbsSyn t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17
@@ -1147,8 +1127,30 @@ newl tks = happySomeParser where
 happySeq = happyDontSeq
 
 
-parseError :: [Token] -> a
-parseError tokens = failE "Parse error"
+data E a = ParseOk a 
+  | ParseFailed String
+  deriving Show
+
+thenE :: E a -> (a -> E b) -> E b
+m `thenE` k = 
+   case m of 
+       ParseOk a -> k a
+       ParseFailed e -> ParseFailed e
+
+returnE :: a -> E a
+returnE a = ParseOk a
+
+failE :: String -> E a
+failE err = ParseFailed err
+
+catchE :: E a -> (String -> E a) -> E a
+catchE m k = 
+   case m of
+      ParseOk a -> ParseOk a
+      ParseFailed e -> k e
+
+parseError :: [Token] -> E a
+parseError tokens = failE ("Parse error on token "  ++ (show (head tokens)))
 
 data Program 
     = Program MainClass ClassDeclList
@@ -1200,6 +1202,7 @@ data Statement
     | SPrint Exp
     | SEqual Ident Exp
     | SArrayEqual Ident Exp Exp
+    | StatementError
     deriving Show
 
 data StatementList
@@ -1223,6 +1226,7 @@ data Exp
     | ExpThis
     | ExpNot Exp
     | ExpLength Exp
+    | ExpError
     deriving Show
 data Op
      = And
