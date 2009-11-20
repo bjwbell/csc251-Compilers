@@ -1156,6 +1156,8 @@ data Program
     = Program MainClass ClassDeclList
       deriving Show
 
+
+
 data MainClass
     = MClass String String Statement
       deriving Show
@@ -1228,6 +1230,7 @@ data Exp
     | ExpLength Exp
     | ExpError
     deriving Show
+
 data Op
      = And
      | LessThan
@@ -1247,8 +1250,32 @@ data ExpRest
     = ExpRest Exp
     deriving Show
 
+data Sym = Sym String String
+  deriving (Show, Eq)
 
-main = getContents >>= print . newl . alexScanTokens
+classSymbols (ParseOk (Program mainClass classDeclList)) = (classSymbolscl classDeclList)
+classSymbolsc (ClassDecl ident1 ident2 varDecls methodDecls) = [(ident1, (ClassDecl ident1 ident2 varDecls methodDecls))]
+classSymbolscl (ClassDeclList classDecl classDeclList) = classSymbolsc classDecl : classSymbolscl classDeclList
+classSymbolscl (CEmpty) = []
+
+symbolTable (ParseOk program) = symbolTableProgram program
+symbolTable (ParseFailed string) = []
+symbolTableProgram (Program mainClass classDeclList)  = symbolTableClassDeclList classDeclList
+symbolTableClassDeclList (CEmpty) = []
+symbolTableClassDeclList (ClassDeclList classdecl classdecllist) = (symbolTableClassDecl classdecl) : (symbolTableClassDeclList classdecllist)
+symbolTableClassDecl (ClassDecl ident1 ident2 _ _) = [(Sym ident1 ident2)]
+
+
+
+main = do
+  inStr <- getContents
+  let parseTree = newl (alexScanTokens inStr)  
+  let classes = classSymbols parseTree
+  putStrLn "\n"
+  putStrLn "classes\n " 
+  print classes
+  --let typedParseTree = addTypes parseTree
+  print (symbolTable (parseTree))
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}
