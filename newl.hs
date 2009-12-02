@@ -1154,47 +1154,47 @@ parseError tokens = failE ("Parse error on token "  ++ (show (head tokens)))
 
 data Program 
     = Program MainClass ClassDeclList
-      deriving Show
+      deriving (Show, Eq)
 
 
 
 data MainClass
     = MClass String String Statement
-      deriving Show
+      deriving (Show, Eq)
 
 data ClassDeclList
     = ClassDeclList ClassDecl ClassDeclList
     | CEmpty
-  deriving Show
+  deriving (Show, Eq)
 
 data ClassDecl = ClassDecl Ident Ident VarDeclList MethodDeclList
-  deriving Show
+  deriving (Show, Eq)
 
 
 data MethodDeclList
     = MethodDeclList MethodDecl MethodDeclList
     | MEmpty
-    deriving Show
+    deriving (Show, Eq)
 data MethodDecl
     = MethodDecl Type Ident FormalList VarDeclList StatementList Exp
-    deriving Show
+    deriving (Show, Eq)
 
 data VarDeclList =
     VarDeclList Type Ident VarDeclList
     | VEmpty
-    deriving Show
+    deriving (Show, Eq)
 
 data FormalList = 
     FormalList Type Ident FormalList
     | FEmpty
-  deriving Show
+  deriving (Show, Eq)
 
 data Type =
     TypeIntArray
     | TypeBoolean
     | TypeInt
     | TypeIdent Ident
-    deriving Show
+    deriving (Show, Eq)
 
 data Statement
     = Statement String
@@ -1205,12 +1205,12 @@ data Statement
     | SEqual Ident Exp
     | SArrayEqual Ident Exp Exp
     | StatementError
-    deriving Show
+    deriving (Show, Eq)
 
 data StatementList
     = StatementList StatementList Statement 
     | Empty
-    deriving Show
+    deriving (Show, Eq)
 
 
 data Exp
@@ -1229,7 +1229,7 @@ data Exp
     | ExpNot Exp
     | ExpLength Exp
     | ExpError
-    deriving Show
+    deriving (Show, Eq)
 
 data Op
      = And
@@ -1245,37 +1245,134 @@ data ExpList
     = ExpList Exp ExpRest
     | ExpListEmpty
     | ExpListExp Exp
-    deriving Show
+    deriving (Show, Eq)
 data ExpRest
     = ExpRest Exp
-    deriving Show
+    deriving (Show, Eq)
 
 data Sym = Sym String String
   deriving (Show, Eq)
 
-classSymbols (ParseOk (Program mainClass classDeclList)) = (classSymbolscl classDeclList)
-classSymbolsc (ClassDecl ident1 ident2 varDecls methodDecls) = [(ident1, (ClassDecl ident1 ident2 varDecls methodDecls))]
+
+classSymbols (ParseOk (Program mainClass classDeclList)) = classSymbolsMainClass mainClass : classSymbolscl classDeclList 
+classSymbolsMainClass (MClass className paramName statement) = (className, (ClassDecl className "void" VEmpty MEmpty))
+classSymbolsc (ClassDecl className parentClassName varDecls methodDecls) = (className, (ClassDecl className parentClassName varDecls methodDecls))
 classSymbolscl (ClassDeclList classDecl classDeclList) = classSymbolsc classDecl : classSymbolscl classDeclList
 classSymbolscl (CEmpty) = []
 
-symbolTable (ParseOk program) = symbolTableProgram program
-symbolTable (ParseFailed string) = []
-symbolTableProgram (Program mainClass classDeclList)  = symbolTableClassDeclList classDeclList
-symbolTableClassDeclList (CEmpty) = []
-symbolTableClassDeclList (ClassDeclList classdecl classdecllist) = (symbolTableClassDecl classdecl) : (symbolTableClassDeclList classdecllist)
-symbolTableClassDecl (ClassDecl ident1 ident2 _ _) = [(Sym ident1 ident2)]
+--data Context = Context String String
+
+--symbolTable (ParseOk program) = symbolTableProgram program
+--symbolTable (ParseFailed string) = []
+--symbolTableProgram (Program mainClass classDeclList)  = symbolTableClassDeclList classDeclList
+--symbolTableClassDeclList (CEmpty) = []
+--symbolTableClassDeclList (ClassDeclList classdecl classdecllist) = (symbolTableClassDecl classdecl) : (symbolTableClassDeclList classdecllist)
+--symbolTableClassDecl (ClassDecl ident1 ident2 _ _) = [(Sym ident1 ident2)]
+
+semanticAnalysis (ParseOk (Program mainClass classDeclList)) classes = semanticAnalysisMainClass mainClass classes
+
+semanticAnalysisMainClass (MClass className paramName statement) classes = do
+  if lookup className classes == Nothing
+      then error ("Error " ++ className ++ " is not a declared class")
+      else semanticAnalysisStatement statement classes [("one", "one")]
+
+semanticAnalysisStatement (Statement string) classes context = "Success" -- don't know what Statement string is from so defaulting to success
+semanticAnalysisStatement (SList statementList) classes context = 
+    semanticAnalysisStatementList statementList classes context
+semanticAnalysisStatement (SIfElse exp1 statement1 statement2) classes context =
+    if semanticAnalysisStatement statement1 classes context == "Success" && semanticAnalysisStatement statement2 classes context == "Success"
+       then "Success"
+       else error ("Error in If Else Statement")
+
+semanticAnalysisStatement (SWhile exp statement) classes context = semanticAnalysisStatement statement classes context
+
+semanticAnalysisStatement (SEqual ident1 exp1) classes context = "Success"
+
+semanticAnalysisStatement (SPrint exp) classes context = semanticAnalysisExp exp classes context
+--    "Success"
+
+--    "Success"
+semanticAnalysisStatement (SArrayEqual ident exp1 exp2) classes context = "Success"
 
 
 
-main = do
+
+semanticAnalysisStatementList (StatementList statementList statement) classes context = 
+    if semanticAnalysisStatementList statementList classes context == "Success" 
+        then  semanticAnalysisStatement statement classes context
+        else  error "Statement list error"
+                    
+semanticAnalysisStatementList Empty classes context = "Success"
+
+-- the semanticAnalysisExp return the type name of the expression
+semanticAnalysisExp (Exp string) classes context = "Success" -- wtf is this?
+
+semanticAnalysisExp (ExpOp exp1 char exp2) classes context = 
+    if semanticAnalysisExp exp1 classes context == "int" && semanticAnalysisExp exp2 classes context == "int"
+       then "int"
+       else error ("one of the expressions exp1:" ++ show(exp1) ++ " exp2:" ++ show(exp2) ++ " is not an integer")
+
+semanticAnalysisExp (ExpComOp exp1 char exp2) classes context = 
+    if semanticAnalysisExp exp1 classes context == "int" && semanticAnalysisExp exp2 classes context == "int"
+       then "bool"
+       else error ("one of the expressions exp1:" ++ show(exp1) ++ " exp2:" ++ show(exp2) ++ " is not an integer")
+
+
+semanticAnalysisExp (ExpArray exp1 exp2) classes context  = "not implemented" -- "Exp [ Exp ]"
+
+semanticAnalysisExp (ExpFCall exp ident expList) classes context = semanticAnalysisExp exp classes context -- Exp . Ident ( ExpList )
+
+semanticAnalysisExp (ExpInt int) classes context = "int"
+
+semanticAnalysisExp (ExpNewInt exp) classes context = 
+    if semanticAnalysisExp exp classes context == "int"
+       then "int"
+       else error ("Error new int[exp] the expression is not of an integer")
+
+semanticAnalysisExp (ExpBool bool) classes context  = "bool" -- True or False
+
+
+semanticAnalysisExp (ExpIdent ident) classes context = 
+    if lookup ident context == Nothing
+       then error ("Error " ++ ident ++ " is not a declared variable")
+       else show(lookup ident context)
+                                                       
+semanticAnalysisExp (ExpNewIdent ident) classes context = 
+    if lookup ident classes == Nothing
+    then error ("Error " ++ ident ++ " is not a declared class")
+    else ident
+
+semanticAnalysisExp (ExpExp exp) classes context  = semanticAnalysisExp exp classes context -- Exp ( Exp )
+
+semanticAnalysisExp (ExpThis) classes context = "not implemented"
+
+semanticAnalysisExp (ExpNot exp) classes context = 
+    if semanticAnalysisExp exp classes context == "int"
+       then "int"
+       else error "wrong type for !exp, expecting type of int"
+
+semanticAnalysisExp (ExpLength exp) classes context = "int"
+--    if semanticAnalysisExp exp == "int"
+--           then "int"
+--           else error "Error in " ++ show(exp) ++ ".length the expression is not "
+
+
+main = do 
   inStr <- getContents
   let parseTree = newl (alexScanTokens inStr)  
+  putStrLn ("parseTree: " ++ show(parseTree))
   let classes = classSymbols parseTree
-  putStrLn "\n"
-  putStrLn "classes\n " 
+  putStrLn "classes " 
   print classes
-  --let typedParseTree = addTypes parseTree
-  print (symbolTable (parseTree))
+  putStrLn ""
+--  let al = [(1, "one")]
+--  let r = lookup 1 al
+--  print r
+  let sAnalysis = semanticAnalysis parseTree classes
+  putStrLn ("Semantic Analysis Results " ++ show(sAnalysis))
+  putStrLn "\n"
+  print "done"
+  --print (symbolTable (parseTree))
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}
