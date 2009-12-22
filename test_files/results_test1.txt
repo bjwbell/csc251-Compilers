@@ -1,3 +1,4 @@
+bbell@bbell-desktop:~/csc251-Compilers$ cat test_files/test1.newl 
 class Factorial {
    public static void main(String[] a) {
       System.out.println(new Fac().ComputeFac(10));
@@ -13,4 +14,8 @@ class Fac {
        	     	num_aux = num * (this.ComputeFac(num - 1));
 	     return num_aux;
       }
-}
+}bbell@bbell-desktop:~/csc251-Compilers$ cat test_files/test1.txt | ./a.out 
+parseTree: ParseFailed "Parse error on token TIntLiteral 1"
+classes 
+a.out: Parse Failed, aborting semantic analysis
+

@@ -289,7 +289,10 @@ data MethodSymbol = MethodSymbol {
                     deriving (Show, Eq)
 -- String String [String] -- return type, name, types names of the params
 
+classSymbols (ParseFailed _) = error("Parse Failed, aborting semantic analysis")
+
 classSymbols (ParseOk (Program mainClass classDeclList)) = classSymbolsMainClass mainClass : classSymbolscl classDeclList 
+
 classSymbolsMainClass (MClass className paramName statement) = 
     (className, (ClassSymbol className [] []))
 classSymbolsc (ClassDecl className parentClassName varDecls methodDecls) = (className, (ClassSymbol className  (varSymbols varDecls) (methodSymbols methodDecls)))
