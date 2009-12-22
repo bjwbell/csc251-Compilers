@@ -1,5 +1,8 @@
 module Main where
 import Scanner
+-- Notes
+--1. Arrays are not implemented. So please dont use them
+--2. The array of arguments passed to main is not implemented.
 
 -- parser produced by Happy Version 1.17
 
@@ -1254,6 +1257,45 @@ data Sym = Sym String String
   deriving (Show, Eq)
 
 
+data Symbol 
+    = ClassSymbol 
+      {
+          className       :: String
+        , publicVariables :: [Symbol] 
+        , methods         :: [MethodSymbol] -- class name, public variables, methods
+      }
+    | IntSymbol String -- variable is an integer, String is the name
+    | BoolSymbol String -- variable is a boolean, String is the name
+      deriving (Eq)
+
+--data Color 
+--    = Red String
+--    | Green String
+--instance Show Color where
+--    show Red = "Red"
+--    show Green = "Green"
+
+--instance Show Symbol where show = showSymbol
+
+instance Show Symbol where 
+    show (ClassSymbol name1 vars methods) = show name1
+    show (IntSymbol name2) = show name2
+    show (BoolSymbol name3) = show name3
+
+--data MethodSymbol = MethodSymbol String String [String] -- return type, name, type names of the params
+--
+showSymbol (ClassSymbol name publicVars methods) = show name
+showSymbol (IntSymbol name) = name
+showSymbol (BoolSymbol name) = name
+    
+data MethodSymbol = MethodSymbol {
+      returnType :: String
+    , name       :: String
+    , args       :: [String]
+    } 
+                    deriving (Show, Eq)
+-- String String [String] -- return type, name, types names of the params
+
 classSymbols (ParseOk (Program mainClass classDeclList)) = classSymbolsMainClass mainClass : classSymbolscl classDeclList 
 classSymbolsMainClass (MClass className paramName statement) = (className, (ClassDecl className "void" VEmpty MEmpty))
 classSymbolsc (ClassDecl className parentClassName varDecls methodDecls) = (className, (ClassDecl className parentClassName varDecls methodDecls))
@@ -1274,9 +1316,9 @@ semanticAnalysis (ParseOk (Program mainClass classDeclList)) classes = semanticA
 semanticAnalysisMainClass (MClass className paramName statement) classes = do
   if lookup className classes == Nothing
       then error ("Error " ++ className ++ " is not a declared class")
-      else semanticAnalysisStatement statement classes [("one", "one")]
+      else semanticAnalysisStatement statement classes [("dummysymbol", IntSymbol "dummysymbol")]
 
-semanticAnalysisStatement (Statement string) classes context = "Success" -- don't know what Statement string is from so defaulting to success
+semanticAnalysisStatement (Statement string) classes context = "Success" -- dont know what Statement string is from so defaulting to success
 semanticAnalysisStatement (SList statementList) classes context = 
     semanticAnalysisStatementList statementList classes context
 semanticAnalysisStatement (SIfElse exp1 statement1 statement2) classes context =
@@ -1284,7 +1326,11 @@ semanticAnalysisStatement (SIfElse exp1 statement1 statement2) classes context =
        then "Success"
        else error ("Error in If Else Statement")
 
-semanticAnalysisStatement (SWhile exp statement) classes context = semanticAnalysisStatement statement classes context
+semanticAnalysisStatement (SWhile exp statement) classes context = 
+    do
+      semanticAnalysisExp exp classes context
+      semanticAnalysisStatement statement classes context
+
 
 semanticAnalysisStatement (SEqual ident1 exp1) classes context = "Success"
 
@@ -1329,7 +1375,7 @@ semanticAnalysisExp (ExpNewInt exp) classes context =
        then "int"
        else error ("Error new int[exp] the expression is not of an integer")
 
-semanticAnalysisExp (ExpBool bool) classes context  = "bool" -- True or False
+semanticAnalysisExp (ExpBool bool) classes context  = "boolean" -- True or False
 
 
 semanticAnalysisExp (ExpIdent ident) classes context = 
@@ -1347,14 +1393,14 @@ semanticAnalysisExp (ExpExp exp) classes context  = semanticAnalysisExp exp clas
 semanticAnalysisExp (ExpThis) classes context = "not implemented"
 
 semanticAnalysisExp (ExpNot exp) classes context = 
-    if semanticAnalysisExp exp classes context == "int"
-       then "int"
-       else error "wrong type for !exp, expecting type of int"
+    if semanticAnalysisExp exp classes context == "boolean"
+       then "boolean"
+       else error "wrong type for !exp, expecting type of boolean"
 
-semanticAnalysisExp (ExpLength exp) classes context = "int"
---    if semanticAnalysisExp exp == "int"
---           then "int"
---           else error "Error in " ++ show(exp) ++ ".length the expression is not "
+semanticAnalysisExp (ExpLength exp) classes context =
+    if semanticAnalysisExp exp classes context == "int[]"
+           then "int"
+           else error "Error in " ++ show(exp) ++ ".length the expression is not of type int[] "
 
 
 main = do 
