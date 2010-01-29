@@ -7,6 +7,11 @@ module Scanner where
 
 $digit = 0-9			-- digits
 $alpha = [a-zA-Z]		-- alphabetic characters
+$graphic    = $printable # $white
+
+@string     = \" ($graphic # \")* \"
+
+
 
 tokens :-
 
@@ -40,6 +45,7 @@ tokens :-
   "("					{ \s -> TLeftParen }
   ")"					{ \s -> TRightParen }
   $alpha[$alpha $digit \_ \']*		{ \s -> TIdent s }
+  @string 	       	  		{ \s -> TStringLiteral (init (tail s)) -- remove the leading " and trailing " }
   "{"	 	 	   		{ \s -> TLeftBrace }
   "}"					{ \s -> TRightBrace }
   ","					{ \s -> TComma }
@@ -84,6 +90,7 @@ data Token =
 	TIdent String	|
         TPrint          |
 	TIntLiteral Int |
+	TStringLiteral String |
         TReturn
 	deriving (Eq,Show)
 
